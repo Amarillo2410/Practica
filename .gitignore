@@ -1,0 +1,52 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+artifacts/
+
+# Logs and coverage
+[Ll]og/
+[Ll]ogs/
+*.log
+*.binlog
+*.trx
+[Tt]est[Rr]esult*/
+TestResults/
+coverage/
+coverage-*/
+CodeCoverage/
+
+# User/IDE specific
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Dotnet local caches (when DOTNET_CLI_HOME or NUGET_PACKAGES are inside repo)
+.dotnet/
+.nuget/
+
+# NuGet packages and symbols
+*.nupkg
+*.snupkg
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+*~
