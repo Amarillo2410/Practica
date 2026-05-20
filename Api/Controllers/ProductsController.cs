@@ -1,7 +1,7 @@
 using Api.Dtos.Products;
 using Application.Abstractions;
 using Application.UseCase.Products;
-using MapsterMapper;
+using Mapster;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,13 +13,11 @@ public sealed class ProductsController : BaseApiController
 {
     private readonly IUnitOfWork _uow;
     private readonly ISender _sender;
-    private readonly IMapper _mapper;
 
-    public ProductsController(IUnitOfWork uow, ISender sender, IMapper mapper)
+    public ProductsController(IUnitOfWork uow, ISender sender)
     {
         _uow = uow;
         _sender = sender;
-        _mapper = mapper;
     }
 
     [HttpGet]
@@ -27,7 +25,7 @@ public sealed class ProductsController : BaseApiController
     public async Task<ActionResult<IReadOnlyList<ProductDto>>> GetAll(CancellationToken ct)
     {
         var products = await _uow.Products.GetAllAsync(ct);
-        var result = _mapper.Map<IReadOnlyList<ProductDto>>(products);
+        var result = products.Adapt<IReadOnlyList<ProductDto>>();
         return Ok(result);
     }
 
@@ -52,7 +50,7 @@ public sealed class ProductsController : BaseApiController
 
         var products = await _uow.Products.GetPagedAsync(page, pageSize, search, ct);
         var total = await _uow.Products.CountAsync(search, ct);
-        var items = _mapper.Map<IReadOnlyList<ProductDto>>(products);
+        var items = products.Adapt<IReadOnlyList<ProductDto>>();
 
         return Ok(new
         {
@@ -82,7 +80,7 @@ public sealed class ProductsController : BaseApiController
             return NotFound();
         }
 
-        var result = _mapper.Map<ProductDto>(product);
+        var result = product.Adapt<ProductDto>();
         return Ok(result);
     }
 
@@ -90,7 +88,7 @@ public sealed class ProductsController : BaseApiController
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] CreateProductRequest request, CancellationToken ct)
     {
-        var command = _mapper.Map<CreateProduct>(request);
+        var command = request.Adapt<CreateProduct>();
         var id = await _sender.Send(command, ct);
         var product = await _uow.Products.GetByIdAsync(id, ct);
         if (product is null)
@@ -98,7 +96,7 @@ public sealed class ProductsController : BaseApiController
             return NotFound();
         }
 
-        var result = _mapper.Map<ProductDto>(product);
+        var result = product.Adapt<ProductDto>();
         return CreatedAtAction(nameof(GetById), new { id }, result);
     }
 
@@ -106,7 +104,7 @@ public sealed class ProductsController : BaseApiController
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductRequest request, CancellationToken ct)
     {
-        var command = _mapper.Map<UpdateProduct>(request) with { Id = id };
+        var command = request.Adapt<UpdateProduct>() with { Id = id };
         await _sender.Send(command, ct);
         return NoContent();
     }
