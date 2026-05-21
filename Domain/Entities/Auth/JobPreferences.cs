@@ -26,4 +26,35 @@ public sealed class JobPreferences
 
         UserId = userId;
     }
+
+    public void UpdatePreferences(
+        JobSearchStatus jobSearchStatus,
+        IEnumerable<string>? preferredTitles,
+        IEnumerable<string>? preferredLocations,
+        bool remoteInterested,
+        bool jobAlertsEnabled,
+        bool recruiterVisibility)
+    {
+        JobSearchStatus = jobSearchStatus;
+        PreferredTitles = NormalizeList(preferredTitles);
+        PreferredLocations = NormalizeList(preferredLocations);
+        RemoteInterested = remoteInterested;
+        JobAlertsEnabled = jobAlertsEnabled;
+        RecruiterVisibility = recruiterVisibility;
+    }
+
+    private static string[] NormalizeList(IEnumerable<string>? values)
+    {
+        if (values is null)
+        {
+            return [];
+        }
+
+        return values
+            .Select(x => x?.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
 }

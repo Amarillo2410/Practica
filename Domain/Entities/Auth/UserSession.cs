@@ -7,7 +7,6 @@ public sealed class UserSession : BaseEntity<Guid>
     public string? Ip { get; private set; }
     public string? Location { get; private set; }
     public DateTime LastSeenAt { get; private set; }
-    public User User { get; private set; } = null!;
     public UserSecurity Security { get; private set; } = null!;
 
     private UserSession()

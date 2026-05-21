@@ -5,6 +5,7 @@ using Infrastructure.Repositories.Auth;
 using Infrastructure.Services.Auth;
 using Infrastructure.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,8 @@ public static class DependencyInjection
             string connectionString = configuration.GetConnectionString("Postgres")!;
             options.UseNpgsql(connectionString);
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.Configure<JwtOptions>(options =>
@@ -51,10 +54,33 @@ public static class DependencyInjection
             options.TenantId = configuration["Authentication:Microsoft:TenantId"] ?? "common";
         });
 
+        services.Configure<SmtpEmailSettings>(options =>
+        {
+            options.Host = configuration["Email:Smtp:Host"] ?? "smtp.gmail.com";
+
+            if (int.TryParse(configuration["Email:Smtp:Port"], out var port))
+            {
+                options.Port = port;
+            }
+
+            if (bool.TryParse(configuration["Email:Smtp:EnableSsl"], out var enableSsl))
+            {
+                options.EnableSsl = enableSsl;
+            }
+
+            options.UserName = configuration["Email:Smtp:UserName"] ?? string.Empty;
+            options.Password = configuration["Email:Smtp:Password"] ?? string.Empty;
+            options.FromEmail = configuration["Email:Smtp:FromEmail"] ?? string.Empty;
+            options.FromName = configuration["Email:Smtp:FromName"] ?? "LinkedIn";
+        });
+
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IEmailVerificationCodeRepository, EmailVerificationCodeRepository>();
+        services.AddScoped<IPasswordHashService, Pbkdf2PasswordHashService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IExternalTokenValidator, GoogleTokenValidator>();
         services.AddScoped<IExternalTokenValidator, MicrosoftTokenValidator>();

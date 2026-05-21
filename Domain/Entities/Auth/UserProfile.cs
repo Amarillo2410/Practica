@@ -42,6 +42,31 @@ public sealed class UserProfile
         AvatarUrl = Normalize(avatarUrl);
     }
 
+    public void UpdateBasicInfo(string? firstName, string? lastName)
+    {
+        FirstName = Normalize(firstName);
+        LastName = Normalize(lastName);
+        FullName = BuildFullName(FirstName, LastName);
+        PublicProfileUrl = BuildPublicProfileUrl(FirstName, LastName);
+    }
+
+    public void UpdateOnboardingDetails(
+        string? location,
+        string? headline,
+        string? currentCompany,
+        string? currentPosition)
+    {
+        Location = Normalize(location);
+        Headline = Normalize(headline);
+        CurrentCompany = Normalize(currentCompany);
+        CurrentPosition = Normalize(currentPosition);
+    }
+
+    public void SetPublicProfileUrl(string? publicProfileUrl)
+    {
+        PublicProfileUrl = Normalize(publicProfileUrl);
+    }
+
     private static string BuildFullName(string? firstName, string? lastName)
         => string.Join(" ", new[] { firstName, lastName }.Where(x => !string.IsNullOrWhiteSpace(x)));
 

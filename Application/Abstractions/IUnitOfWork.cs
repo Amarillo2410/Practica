@@ -7,6 +7,7 @@ public interface IUnitOfWork
     IUserRepository Users { get; }
     IOAuthAccountRepository OAuthAccounts { get; }
     IRefreshTokenRepository RefreshTokens { get; }
+    IEmailVerificationCodeRepository EmailVerificationCodes { get; }
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default);
 }

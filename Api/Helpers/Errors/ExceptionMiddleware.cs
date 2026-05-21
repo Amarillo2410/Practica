@@ -39,7 +39,18 @@ public sealed class ExceptionMiddleware
                 _ => (int)HttpStatusCode.InternalServerError
             };
 
-            _logger.LogError(ex, "Unhandled exception while processing request.");
+            if (statusCode >= StatusCodes.Status500InternalServerError)
+            {
+                _logger.LogError(ex, "Unhandled exception while processing request.");
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Request ended with {StatusCode} at {Path}: {Message}",
+                    statusCode,
+                    context.Request.Path,
+                    ex.Message);
+            }
 
             var problemDetails = new ProblemDetails
             {

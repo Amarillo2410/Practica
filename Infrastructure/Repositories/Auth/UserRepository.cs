@@ -12,6 +12,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         return dbContext.Users
             .AsTracking()
             .Include(x => x.Profile)
+            .Include(x => x.ProfessionalInfo)
+            .Include(x => x.JobPreferences)
+            .Include(x => x.Security)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
     }
 
@@ -22,6 +25,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         return dbContext.Users
             .AsTracking()
             .Include(x => x.Profile)
+            .Include(x => x.ProfessionalInfo)
+            .Include(x => x.JobPreferences)
+            .Include(x => x.Security)
             .FirstOrDefaultAsync(x => x.Email == normalizedEmail, ct);
     }
 
@@ -29,6 +35,14 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     {
         dbContext.Users.Add(user);
         return Task.CompletedTask;
+    }
+
+    public Task<bool> ExistsPublicProfileUrlAsync(string publicProfileUrl, Guid? excludeUserId = null, CancellationToken ct = default)
+    {
+        var normalized = publicProfileUrl.Trim().ToLowerInvariant();
+        return dbContext.UserProfiles.AnyAsync(
+            x => x.PublicProfileUrl == normalized && (!excludeUserId.HasValue || x.UserId != excludeUserId.Value),
+            ct);
     }
 
     public Task UpdateAsync(User user, CancellationToken ct = default)

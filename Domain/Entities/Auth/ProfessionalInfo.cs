@@ -27,4 +27,25 @@ public sealed class ProfessionalInfo
 
         UserId = userId;
     }
+
+    public void UpdateExperience(
+        bool isStudent,
+        string? jobTitle,
+        string? company,
+        string? university,
+        string? degree,
+        string? discipline,
+        int? startYear)
+    {
+        IsStudent = isStudent;
+        JobTitle = Normalize(jobTitle);
+        Company = Normalize(company);
+        University = Normalize(university);
+        Degree = Normalize(degree);
+        Discipline = Normalize(discipline);
+        StartYear = startYear;
+    }
+
+    private static string? Normalize(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

@@ -19,6 +19,7 @@ public sealed class User : BaseEntity<Guid>
     public UserSecurity? Security { get; private set; }
     public ICollection<OAuthAccount> OAuthAccounts { get; private set; } = new HashSet<OAuthAccount>();
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new HashSet<RefreshToken>();
+    public ICollection<EmailVerificationCode> EmailVerificationCodes { get; private set; } = new HashSet<EmailVerificationCode>();
     public ICollection<Experience> Experiences { get; private set; } = new HashSet<Experience>();
     public ICollection<Education> Education { get; private set; } = new HashSet<Education>();
     public ICollection<UserSkill> UserSkills { get; private set; } = new HashSet<UserSkill>();
@@ -57,6 +58,17 @@ public sealed class User : BaseEntity<Guid>
     public void ConfirmEmail()
     {
         IsEmailVerified = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetPasswordHash(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+        {
+            throw new ArgumentException("Password hash is required.", nameof(passwordHash));
+        }
+
+        PasswordHash = passwordHash.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<OAuthAccount> OAuthAccounts => Set<OAuthAccount>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<ProfessionalInfo> ProfessionalInfo => Set<ProfessionalInfo>();
     public DbSet<JobPreferences> JobPreferences => Set<JobPreferences>();

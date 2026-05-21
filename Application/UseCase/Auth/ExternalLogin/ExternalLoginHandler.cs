@@ -59,11 +59,14 @@ public sealed class ExternalLoginHandler(
                     externalUser.EmailVerified,
                     ResolveInitialOnboardingStep(externalUser));
 
-                user.SetProfile(new UserProfile(
+                var newProfile = new UserProfile(
                     user.Id,
                     externalUser.FirstName,
                     externalUser.LastName,
-                    externalUser.ProfilePictureUrl));
+                    externalUser.ProfilePictureUrl);
+                newProfile.SetPublicProfileUrl(
+                    await BuildUniquePublicProfileUrlAsync(newProfile.PublicProfileUrl, user.Id, ct));
+                user.SetProfile(newProfile);
                 user.SetProfessionalInfo(new ProfessionalInfo(user.Id));
                 user.SetJobPreferences(new JobPreferences(user.Id));
                 user.SetSecurity(new UserSecurity(user.Id));
@@ -93,11 +96,14 @@ public sealed class ExternalLoginHandler(
 
                 if (user.Profile is null)
                 {
-                    user.SetProfile(new UserProfile(
+                    var createdProfile = new UserProfile(
                         user.Id,
                         externalUser.FirstName,
                         externalUser.LastName,
-                        externalUser.ProfilePictureUrl));
+                        externalUser.ProfilePictureUrl);
+                    createdProfile.SetPublicProfileUrl(
+                        await BuildUniquePublicProfileUrlAsync(createdProfile.PublicProfileUrl, user.Id, ct));
+                    user.SetProfile(createdProfile);
                 }
                 else if (string.IsNullOrWhiteSpace(user.Profile.AvatarUrl) &&
                     !string.IsNullOrWhiteSpace(externalUser.ProfilePictureUrl))
@@ -168,5 +174,26 @@ public sealed class ExternalLoginHandler(
     {
         var hasNames = !string.IsNullOrWhiteSpace(token.FirstName) && !string.IsNullOrWhiteSpace(token.LastName);
         return hasNames ? OnboardingStep.Location : OnboardingStep.BasicProfile;
+    }
+
+    private async Task<string> BuildUniquePublicProfileUrlAsync(
+        string? baseSlug,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var seed = string.IsNullOrWhiteSpace(baseSlug)
+            ? $"user-{userId:N}".ToLowerInvariant()
+            : baseSlug.Trim().ToLowerInvariant();
+
+        var candidate = seed;
+        var suffix = 1;
+
+        while (await unitOfWork.Users.ExistsPublicProfileUrlAsync(candidate, excludeUserId: userId, ct))
+        {
+            candidate = $"{seed}-{suffix}";
+            suffix++;
+        }
+
+        return candidate;
     }
 }

@@ -12,6 +12,7 @@ public sealed class EfUnitOfWork : IUnitOfWork
     private IUserRepository? _users;
     private IOAuthAccountRepository? _oAuthAccounts;
     private IRefreshTokenRepository? _refreshTokens;
+    private IEmailVerificationCodeRepository? _emailVerificationCodes;
 
     public EfUnitOfWork(AppDbContext dbContext)
     {
@@ -40,4 +41,6 @@ public sealed class EfUnitOfWork : IUnitOfWork
     public IUserRepository Users => _users ??= new UserRepository(_dbContext);
     public IOAuthAccountRepository OAuthAccounts => _oAuthAccounts ??= new OAuthAccountRepository(_dbContext);
     public IRefreshTokenRepository RefreshTokens => _refreshTokens ??= new RefreshTokenRepository(_dbContext);
+    public IEmailVerificationCodeRepository EmailVerificationCodes =>
+        _emailVerificationCodes ??= new EmailVerificationCodeRepository(_dbContext);
 }

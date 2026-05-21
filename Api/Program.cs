@@ -9,11 +9,28 @@ using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("Connection string 'Postgres' is required.");
+const string frontendCorsPolicy = "FrontendCorsPolicy";
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+builder.Logging.AddFilter("LuckyPennySoftware.MediatR.License", LogLevel.None);
 
 builder.Services.AddControllers();
+builder.Services.AddCors(options =>
+{
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()
+        ?? [];
+
+    options.AddPolicy(frontendCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -48,7 +65,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseHttpsRedirection();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["HTTPS_PORT"]) ||
+    !string.IsNullOrWhiteSpace(builder.Configuration["ASPNETCORE_HTTPS_PORTS"]))
+{
+    app.UseHttpsRedirection();
+}
+app.UseStaticFiles();
+app.UseCors(frontendCorsPolicy);
 app.UseAuthorization();
 app.MapControllers();
 
