@@ -18,7 +18,7 @@ public sealed class SendEmailVerificationCodeHandler(
         SendEmailVerificationCodeCommand request,
         CancellationToken ct)
     {
-        var user = await unitOfWork.Users.GetByIdAsync(request.UserId, ct);
+        var user = await ResolveUserAsync(request, ct);
         if (user is null)
         {
             throw new BadRequestException("User not found.");
@@ -54,6 +54,21 @@ public sealed class SendEmailVerificationCodeHandler(
             ExpiresAt = expiresAt,
             AlreadyVerified = false
         };
+    }
+
+    private async Task<User?> ResolveUserAsync(SendEmailVerificationCodeCommand request, CancellationToken ct)
+    {
+        if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
+        {
+            return await unitOfWork.Users.GetByIdAsync(request.UserId.Value, ct);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            return await unitOfWork.Users.GetByEmailAsync(request.Email, ct);
+        }
+
+        return null;
     }
 
     private static string BuildEmailBody(string? firstName, string code)

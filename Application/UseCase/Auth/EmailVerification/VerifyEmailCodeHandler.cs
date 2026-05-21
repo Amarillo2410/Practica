@@ -9,7 +9,7 @@ public sealed class VerifyEmailCodeHandler(
 {
     public async Task<VerifyEmailCodeResult> Handle(VerifyEmailCodeCommand request, CancellationToken ct)
     {
-        var user = await unitOfWork.Users.GetByIdAsync(request.UserId, ct);
+        var user = await ResolveUserAsync(request, ct);
         if (user is null)
         {
             throw new BadRequestException("User not found.");
@@ -50,4 +50,19 @@ public sealed class VerifyEmailCodeHandler(
             OnboardingCompleted = user.OnboardingComplete,
             CurrentOnboardingStep = user.CurrentOnboardingStep.ToString()
         };
+
+    private async Task<Domain.Entities.Auth.User?> ResolveUserAsync(VerifyEmailCodeCommand request, CancellationToken ct)
+    {
+        if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
+        {
+            return await unitOfWork.Users.GetByIdAsync(request.UserId.Value, ct);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            return await unitOfWork.Users.GetByEmailAsync(request.Email, ct);
+        }
+
+        return null;
+    }
 }

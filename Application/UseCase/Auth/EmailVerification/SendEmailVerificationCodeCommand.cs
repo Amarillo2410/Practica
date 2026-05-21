@@ -2,4 +2,4 @@ using MediatR;
 
 namespace Application.UseCase.Auth.EmailVerification;
 
-public sealed record SendEmailVerificationCodeCommand(Guid UserId) : IRequest<SendEmailVerificationCodeResult>;
+public sealed record SendEmailVerificationCodeCommand(Guid? UserId, string? Email) : IRequest<SendEmailVerificationCodeResult>;

@@ -104,7 +104,7 @@ public sealed class AuthController(
         [FromBody] SendEmailVerificationCodeRequest request,
         CancellationToken ct)
     {
-        var result = await sender.Send(new SendEmailVerificationCodeCommand(request.UserId), ct);
+        var result = await sender.Send(new SendEmailVerificationCodeCommand(request.UserId, request.Email), ct);
         return Ok(new SendEmailVerificationCodeResponse
         {
             Email = result.Email,
@@ -122,7 +122,7 @@ public sealed class AuthController(
         [FromBody] VerifyEmailCodeRequest request,
         CancellationToken ct)
     {
-        var result = await sender.Send(new VerifyEmailCodeCommand(request.UserId, request.Code), ct);
+        var result = await sender.Send(new VerifyEmailCodeCommand(request.UserId, request.Email, request.Code), ct);
         return Ok(new VerifyEmailCodeResponse
         {
             EmailVerified = result.EmailVerified,

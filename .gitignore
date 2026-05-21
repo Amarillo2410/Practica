@@ -50,3 +50,7 @@ Thumbs.db
 *.temp
 ~$*
 *~
+
+# Runtime uploaded media (do not commit user content)
+Api/wwwroot/uploads/
+Api/wwwroot/uploads/**
