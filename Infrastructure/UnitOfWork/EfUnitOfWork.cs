@@ -10,7 +10,7 @@ public sealed class EfUnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _dbContext;
     private IUserRepository? _users;
-    private IExternalLoginRepository? _externalLogins;
+    private IOAuthAccountRepository? _oAuthAccounts;
     private IRefreshTokenRepository? _refreshTokens;
 
     public EfUnitOfWork(AppDbContext dbContext)
@@ -38,6 +38,6 @@ public sealed class EfUnitOfWork : IUnitOfWork
     }
 
     public IUserRepository Users => _users ??= new UserRepository(_dbContext);
-    public IExternalLoginRepository ExternalLogins => _externalLogins ??= new ExternalLoginRepository(_dbContext);
+    public IOAuthAccountRepository OAuthAccounts => _oAuthAccounts ??= new OAuthAccountRepository(_dbContext);
     public IRefreshTokenRepository RefreshTokens => _refreshTokens ??= new RefreshTokenRepository(_dbContext);
 }

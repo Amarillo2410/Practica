@@ -15,12 +15,15 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
 
     public string GenerateAccessToken(User user)
     {
+        var firstName = user.Profile?.FirstName ?? string.Empty;
+        var lastName = user.Profile?.LastName ?? string.Empty;
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email),
-            new(JwtRegisteredClaimNames.GivenName, user.FirstName),
-            new(JwtRegisteredClaimNames.FamilyName, user.LastName),
+            new(JwtRegisteredClaimNames.GivenName, firstName),
+            new(JwtRegisteredClaimNames.FamilyName, lastName),
             new("onboarding_step", user.CurrentOnboardingStep.ToString())
         };
 

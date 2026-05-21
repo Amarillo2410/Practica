@@ -5,14 +5,26 @@ namespace Domain.Entities.Auth;
 public sealed class User : BaseEntity<Guid>
 {
     public string Email { get; private set; } = string.Empty;
-    public string FirstName { get; private set; } = string.Empty;
-    public string LastName { get; private set; } = string.Empty;
-    public bool EmailConfirmed { get; private set; }
-    public string? ProfilePictureUrl { get; private set; }
+    public string? Phone { get; private set; }
+    public string? PasswordHash { get; private set; }
+    public AuthProvider AuthProvider { get; private set; }
+    public string? ProviderId { get; private set; }
+    public bool IsEmailVerified { get; private set; }
     public OnboardingStep CurrentOnboardingStep { get; private set; } = OnboardingStep.BasicProfile;
-    public bool OnboardingCompleted { get; private set; }
-    public ICollection<ExternalLogin> ExternalLogins { get; private set; } = new HashSet<ExternalLogin>();
+    public bool OnboardingComplete { get; private set; }
+    public UserStatus Status { get; private set; } = UserStatus.Active;
+    public UserProfile? Profile { get; private set; }
+    public ProfessionalInfo? ProfessionalInfo { get; private set; }
+    public JobPreferences? JobPreferences { get; private set; }
+    public UserSecurity? Security { get; private set; }
+    public ICollection<OAuthAccount> OAuthAccounts { get; private set; } = new HashSet<OAuthAccount>();
     public ICollection<RefreshToken> RefreshTokens { get; private set; } = new HashSet<RefreshToken>();
+    public ICollection<Experience> Experiences { get; private set; } = new HashSet<Experience>();
+    public ICollection<Education> Education { get; private set; } = new HashSet<Education>();
+    public ICollection<UserSkill> UserSkills { get; private set; } = new HashSet<UserSkill>();
+    public ICollection<Connection> SentConnections { get; private set; } = new HashSet<Connection>();
+    public ICollection<Connection> ReceivedConnections { get; private set; } = new HashSet<Connection>();
+    public ICollection<Post> Posts { get; private set; } = new HashSet<Post>();
 
     private User()
     {
@@ -20,38 +32,55 @@ public sealed class User : BaseEntity<Guid>
 
     public User(
         string email,
-        string firstName,
-        string lastName,
-        bool emailConfirmed,
-        string? profilePictureUrl,
+        AuthProvider authProvider,
+        string? providerId,
+        bool isEmailVerified,
         OnboardingStep onboardingStep)
     {
         Id = Guid.NewGuid();
         Email = NormalizeEmail(email);
-        FirstName = firstName.Trim();
-        LastName = lastName.Trim();
-        EmailConfirmed = emailConfirmed;
-        ProfilePictureUrl = string.IsNullOrWhiteSpace(profilePictureUrl) ? null : profilePictureUrl.Trim();
+        AuthProvider = authProvider;
+        ProviderId = NormalizeOptional(providerId);
+        IsEmailVerified = isEmailVerified;
         CurrentOnboardingStep = onboardingStep;
-        OnboardingCompleted = onboardingStep == OnboardingStep.Completed;
+        OnboardingComplete = onboardingStep == OnboardingStep.Completed;
+        Status = UserStatus.Active;
     }
 
     public void SetOnboardingStep(OnboardingStep step)
     {
         CurrentOnboardingStep = step;
-        OnboardingCompleted = step == OnboardingStep.Completed;
+        OnboardingComplete = step == OnboardingStep.Completed;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void ConfirmEmail()
     {
-        EmailConfirmed = true;
+        IsEmailVerified = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateProfilePicture(string? profilePictureUrl)
+    public void SetProfile(UserProfile profile)
     {
-        ProfilePictureUrl = string.IsNullOrWhiteSpace(profilePictureUrl) ? null : profilePictureUrl.Trim();
+        Profile = profile;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetProfessionalInfo(ProfessionalInfo professionalInfo)
+    {
+        ProfessionalInfo = professionalInfo;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetJobPreferences(JobPreferences jobPreferences)
+    {
+        JobPreferences = jobPreferences;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetSecurity(UserSecurity security)
+    {
+        Security = security;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -64,4 +93,7 @@ public sealed class User : BaseEntity<Guid>
 
         return email.Trim().ToLowerInvariant();
     }
+
+    private static string? NormalizeOptional(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

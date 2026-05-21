@@ -33,7 +33,7 @@ public sealed class ExternalLoginHandler(
             throw new UnauthorizedException($"{externalUser.Provider} account email is not verified.");
         }
 
-        var existingExternalLogin = await unitOfWork.ExternalLogins.GetByProviderAndProviderUserIdAsync(
+        var existingOAuthAccount = await unitOfWork.OAuthAccounts.GetByProviderAndProviderUserIdAsync(
             externalUser.Provider,
             externalUser.ProviderUserId,
             ct);
@@ -41,9 +41,9 @@ public sealed class ExternalLoginHandler(
         User user;
         var isNewUser = false;
 
-        if (existingExternalLogin is not null)
+        if (existingOAuthAccount is not null)
         {
-            user = existingExternalLogin.User;
+            user = existingOAuthAccount.User;
         }
         else
         {
@@ -54,11 +54,19 @@ public sealed class ExternalLoginHandler(
                 isNewUser = true;
                 user = new User(
                     externalUser.Email,
-                    externalUser.FirstName ?? string.Empty,
-                    externalUser.LastName ?? string.Empty,
+                    externalUser.Provider,
+                    externalUser.ProviderUserId,
                     externalUser.EmailVerified,
-                    externalUser.ProfilePictureUrl,
                     ResolveInitialOnboardingStep(externalUser));
+
+                user.SetProfile(new UserProfile(
+                    user.Id,
+                    externalUser.FirstName,
+                    externalUser.LastName,
+                    externalUser.ProfilePictureUrl));
+                user.SetProfessionalInfo(new ProfessionalInfo(user.Id));
+                user.SetJobPreferences(new JobPreferences(user.Id));
+                user.SetSecurity(new UserSecurity(user.Id));
 
                 await unitOfWork.Users.AddAsync(user, ct);
             }
@@ -66,7 +74,7 @@ public sealed class ExternalLoginHandler(
             {
                 user = userByEmail;
 
-                var existingProviderLogin = await unitOfWork.ExternalLogins.GetByUserAndProviderAsync(
+                var existingProviderLogin = await unitOfWork.OAuthAccounts.GetByUserAndProviderAsync(
                     user.Id,
                     externalUser.Provider,
                     ct);
@@ -78,25 +86,34 @@ public sealed class ExternalLoginHandler(
                         $"This email is already linked to another {externalUser.Provider} account.");
                 }
 
-                if (!user.EmailConfirmed && externalUser.EmailVerified)
+                if (!user.IsEmailVerified && externalUser.EmailVerified)
                 {
                     user.ConfirmEmail();
                 }
 
-                if (string.IsNullOrWhiteSpace(user.ProfilePictureUrl) &&
+                if (user.Profile is null)
+                {
+                    user.SetProfile(new UserProfile(
+                        user.Id,
+                        externalUser.FirstName,
+                        externalUser.LastName,
+                        externalUser.ProfilePictureUrl));
+                }
+                else if (string.IsNullOrWhiteSpace(user.Profile.AvatarUrl) &&
                     !string.IsNullOrWhiteSpace(externalUser.ProfilePictureUrl))
                 {
-                    user.UpdateProfilePicture(externalUser.ProfilePictureUrl);
+                    user.Profile.UpdateAvatar(externalUser.ProfilePictureUrl);
                 }
             }
 
-            var externalLogin = new Domain.Entities.Auth.ExternalLogin(
+            var oAuthAccount = new OAuthAccount(
                 user.Id,
                 externalUser.Provider,
                 externalUser.ProviderUserId,
-                externalUser.Email);
+                externalUser.Email,
+                externalUser.ProfilePictureUrl);
 
-            await unitOfWork.ExternalLogins.AddAsync(externalLogin, ct);
+            await unitOfWork.OAuthAccounts.AddAsync(oAuthAccount, ct);
         }
 
         var accessToken = jwtTokenService.GenerateAccessToken(user);
@@ -117,13 +134,13 @@ public sealed class ExternalLoginHandler(
             {
                 Id = user.Id,
                 Email = user.Email,
-                FirstName = string.IsNullOrWhiteSpace(user.FirstName) ? null : user.FirstName,
-                LastName = string.IsNullOrWhiteSpace(user.LastName) ? null : user.LastName,
-                ProfilePictureUrl = user.ProfilePictureUrl
+                FirstName = string.IsNullOrWhiteSpace(user.Profile?.FirstName) ? null : user.Profile.FirstName,
+                LastName = string.IsNullOrWhiteSpace(user.Profile?.LastName) ? null : user.Profile.LastName,
+                ProfilePictureUrl = user.Profile?.AvatarUrl
             },
             Onboarding = new ExternalLoginOnboardingResult
             {
-                Completed = user.OnboardingCompleted,
+                Completed = user.OnboardingComplete,
                 CurrentStep = user.CurrentOnboardingStep.ToString()
             }
         };

@@ -3,17 +3,17 @@ using Domain.Enums;
 
 namespace Application.Abstractions.Auth;
 
-public interface IExternalLoginRepository
+public interface IOAuthAccountRepository
 {
-    Task<ExternalLogin?> GetByProviderAndProviderUserIdAsync(
+    Task<OAuthAccount?> GetByProviderAndProviderUserIdAsync(
         AuthProvider provider,
         string providerUserId,
         CancellationToken ct = default);
 
-    Task<ExternalLogin?> GetByUserAndProviderAsync(
+    Task<OAuthAccount?> GetByUserAndProviderAsync(
         Guid userId,
         AuthProvider provider,
         CancellationToken ct = default);
 
-    Task AddAsync(ExternalLogin externalLogin, CancellationToken ct = default);
+    Task AddAsync(OAuthAccount oAuthAccount, CancellationToken ct = default);
 }

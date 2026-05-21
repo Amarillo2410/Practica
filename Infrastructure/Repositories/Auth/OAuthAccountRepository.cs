@@ -6,36 +6,37 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories.Auth;
 
-public sealed class ExternalLoginRepository(AppDbContext dbContext) : IExternalLoginRepository
+public sealed class OAuthAccountRepository(AppDbContext dbContext) : IOAuthAccountRepository
 {
-    public Task<ExternalLogin?> GetByProviderAndProviderUserIdAsync(
+    public Task<OAuthAccount?> GetByProviderAndProviderUserIdAsync(
         AuthProvider provider,
         string providerUserId,
         CancellationToken ct = default)
     {
         var normalizedProviderUserId = providerUserId.Trim();
 
-        return dbContext.ExternalLogins
+        return dbContext.OAuthAccounts
             .AsTracking()
             .Include(x => x.User)
+            .ThenInclude(x => x.Profile)
             .FirstOrDefaultAsync(
                 x => x.Provider == provider && x.ProviderUserId == normalizedProviderUserId,
                 ct);
     }
 
-    public Task<ExternalLogin?> GetByUserAndProviderAsync(
+    public Task<OAuthAccount?> GetByUserAndProviderAsync(
         Guid userId,
         AuthProvider provider,
         CancellationToken ct = default)
     {
-        return dbContext.ExternalLogins
+        return dbContext.OAuthAccounts
             .AsTracking()
             .FirstOrDefaultAsync(x => x.UserId == userId && x.Provider == provider, ct);
     }
 
-    public Task AddAsync(ExternalLogin externalLogin, CancellationToken ct = default)
+    public Task AddAsync(OAuthAccount oAuthAccount, CancellationToken ct = default)
     {
-        dbContext.ExternalLogins.Add(externalLogin);
+        dbContext.OAuthAccounts.Add(oAuthAccount);
         return Task.CompletedTask;
     }
 }

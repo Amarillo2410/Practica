@@ -11,6 +11,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     {
         return dbContext.Users
             .AsTracking()
+            .Include(x => x.Profile)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
     }
 
@@ -20,6 +21,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
 
         return dbContext.Users
             .AsTracking()
+            .Include(x => x.Profile)
             .FirstOrDefaultAsync(x => x.Email == normalizedEmail, ct);
     }
 

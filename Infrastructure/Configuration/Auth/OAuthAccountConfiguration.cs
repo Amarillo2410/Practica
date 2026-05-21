@@ -4,13 +4,14 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Configuration.Auth;
 
-public sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<ExternalLogin>
+public sealed class OAuthAccountConfiguration : IEntityTypeConfiguration<OAuthAccount>
 {
-    public void Configure(EntityTypeBuilder<ExternalLogin> builder)
+    public void Configure(EntityTypeBuilder<OAuthAccount> builder)
     {
-        builder.ToTable("external_logins");
+        builder.ToTable("oauth_accounts");
 
         builder.HasKey(x => x.Id);
+
         builder.Property(x => x.Id)
             .HasColumnName("id")
             .ValueGeneratedNever();
@@ -21,7 +22,8 @@ public sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<Extern
 
         builder.Property(x => x.Provider)
             .HasColumnName("provider")
-            .HasConversion<int>()
+            .HasConversion<string>()
+            .HasMaxLength(30)
             .IsRequired();
 
         builder.Property(x => x.ProviderUserId)
@@ -29,9 +31,26 @@ public sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<Extern
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.Property(x => x.Email)
-            .HasColumnName("email")
+        builder.Property(x => x.ProviderEmail)
+            .HasColumnName("provider_email")
             .HasMaxLength(150)
+            .IsRequired();
+
+        builder.Property(x => x.AccessTokenEncrypted)
+            .HasColumnName("access_token_encrypted")
+            .HasMaxLength(2000);
+
+        builder.Property(x => x.RefreshTokenEncrypted)
+            .HasColumnName("refresh_token_encrypted")
+            .HasMaxLength(2000);
+
+        builder.Property(x => x.AvatarFromProvider)
+            .HasColumnName("avatar_from_provider")
+            .HasMaxLength(500);
+
+        builder.Property(x => x.LinkedAt)
+            .HasColumnName("linked_at")
+            .HasColumnType("timestamp with time zone")
             .IsRequired();
 
         builder.Property(x => x.CreatedAt)

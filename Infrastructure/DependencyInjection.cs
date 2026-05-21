@@ -53,7 +53,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IExternalLoginRepository, ExternalLoginRepository>();
+        services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IExternalTokenValidator, GoogleTokenValidator>();
