@@ -3,14 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Configuration.Auth;
-public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
+
+public sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<ExternalLogin>
 {
-    public void Configure(EntityTypeBuilder<RefreshToken> builder)
+    public void Configure(EntityTypeBuilder<ExternalLogin> builder)
     {
-        builder.ToTable("refresh_tokens");
+        builder.ToTable("external_logins");
 
         builder.HasKey(x => x.Id);
-
         builder.Property(x => x.Id)
             .HasColumnName("id")
             .ValueGeneratedNever();
@@ -19,21 +19,20 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
             .HasColumnName("user_id")
             .IsRequired();
 
-        builder.Property(x => x.Token)
-            .HasColumnName("token")
+        builder.Property(x => x.Provider)
+            .HasColumnName("provider")
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(x => x.ProviderUserId)
+            .HasColumnName("provider_user_id")
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.HasIndex(x => x.Token).IsUnique();
-
-        builder.Property(x => x.ExpiresAt)
-            .HasColumnName("expires_at")
-            .HasColumnType("timestamp with time zone")
+        builder.Property(x => x.Email)
+            .HasColumnName("email")
+            .HasMaxLength(150)
             .IsRequired();
-
-        builder.Property(x => x.RevokedAt)
-            .HasColumnName("revoked_at")
-            .HasColumnType("timestamp with time zone");
 
         builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
@@ -46,5 +45,8 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
             .HasColumnType("timestamp with time zone")
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .ValueGeneratedOnAddOrUpdate();
+
+        builder.HasIndex(x => new { x.Provider, x.ProviderUserId })
+            .IsUnique();
     }
 }

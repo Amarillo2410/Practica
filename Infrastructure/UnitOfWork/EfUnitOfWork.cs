@@ -1,33 +1,33 @@
-using System;
 using Application.Abstractions;
 using Application.Abstractions.Auth;
 using Infrastructure.Context;
-using Infrastructure.Products;
 using Infrastructure.Repositories.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.UnitOfWork;
 
-public class EfUnitOfWork : IUnitOfWork
+public sealed class EfUnitOfWork : IUnitOfWork
 {
-    private readonly AppDbContext _contextdb;
-    private IProduct? _product;
-    private IUserMemberService? _userMemberService;
-    private IRolService? _rolService;
-    public EfUnitOfWork(AppDbContext db)
-    {
-        _contextdb = db;
+    private readonly AppDbContext _dbContext;
+    private IUserRepository? _users;
+    private IExternalLoginRepository? _externalLogins;
+    private IRefreshTokenRepository? _refreshTokens;
 
+    public EfUnitOfWork(AppDbContext dbContext)
+    {
+        _dbContext = dbContext;
     }
+
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
-        => _contextdb.SaveChangesAsync(ct);
+        => _dbContext.SaveChangesAsync(ct);
+
     public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
     {
-        await using var tx = await _contextdb.Database.BeginTransactionAsync(ct);
+        await using var tx = await _dbContext.Database.BeginTransactionAsync(ct);
         try
         {
             await operation(ct);
-            await _contextdb.SaveChangesAsync(ct);
+            await _dbContext.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         }
         catch
@@ -36,16 +36,8 @@ public class EfUnitOfWork : IUnitOfWork
             throw;
         }
     }
-    public IProduct Products
-    {
-        get
-        {
-            _product ??= new ProductRepository(_contextdb);
-            return _product;
-        }
-    }
-    public IUserMemberService UserMembers => _userMemberService ??= new UserMemberRepository(_contextdb);
-    public IRolService Roles => _rolService ??= new RolRepository(_contextdb);
-    public IUserMemberRolService UserMemberRoles => throw new NotImplementedException();
 
+    public IUserRepository Users => _users ??= new UserRepository(_dbContext);
+    public IExternalLoginRepository ExternalLogins => _externalLogins ??= new ExternalLoginRepository(_dbContext);
+    public IRefreshTokenRepository RefreshTokens => _refreshTokens ??= new RefreshTokenRepository(_dbContext);
 }

@@ -1,6 +1,17 @@
 @Api_HostAddress = http://localhost:5152
 
-GET {{Api_HostAddress}}/weatherforecast/
-Accept: application/json
+POST {{Api_HostAddress}}/api/auth/external-login/google
+Content-Type: application/json
+
+{
+  "idToken": "REAL_GOOGLE_ID_TOKEN_FROM_FRONTEND"
+}
 
 ###
+
+POST {{Api_HostAddress}}/api/auth/external-login/microsoft
+Content-Type: application/json
+
+{
+  "idToken": "REAL_MICROSOFT_ID_TOKEN_FROM_FRONTEND"
+}

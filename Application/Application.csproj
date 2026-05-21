@@ -14,8 +14,9 @@
     <Folder Include="Abstractions\" />
     <Folder Include="Common\" />
     <Folder Include="Common\Behaviors\" />
+    <Folder Include="Common\Exceptions\" />
     <Folder Include="UseCase\" />
-    <Folder Include="UseCase\Products\" />
+    <Folder Include="UseCase\Auth\" />
   </ItemGroup>
 
   <PropertyGroup>

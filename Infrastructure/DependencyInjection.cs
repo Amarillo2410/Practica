@@ -1,6 +1,8 @@
 using Application.Abstractions;
-using Domain.Entities.Auth;
+using Application.Abstractions.Auth;
 using Infrastructure.Context;
+using Infrastructure.Repositories.Auth;
+using Infrastructure.Services.Auth;
 using Infrastructure.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,7 +22,42 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString);
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
+
+        services.Configure<JwtOptions>(options =>
+        {
+            options.Key = configuration["JWT:Key"] ?? string.Empty;
+            options.Issuer = configuration["JWT:Issuer"] ?? string.Empty;
+            options.Audience = configuration["JWT:Audience"] ?? string.Empty;
+
+            if (int.TryParse(configuration["JWT:DurationInMinutes"], out var durationInMinutes))
+            {
+                options.DurationInMinutes = durationInMinutes;
+            }
+
+            if (int.TryParse(configuration["JWT:RefreshTokenDurationInDays"], out var refreshDurationInDays))
+            {
+                options.RefreshTokenDurationInDays = refreshDurationInDays;
+            }
+        });
+
+        services.Configure<GoogleAuthSettings>(options =>
+        {
+            options.ClientId = configuration["Authentication:Google:ClientId"] ?? string.Empty;
+        });
+
+        services.Configure<MicrosoftAuthSettings>(options =>
+        {
+            options.ClientId = configuration["Authentication:Microsoft:ClientId"] ?? string.Empty;
+            options.TenantId = configuration["Authentication:Microsoft:TenantId"] ?? "common";
+        });
+
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IExternalLoginRepository, ExternalLoginRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IExternalTokenValidator, GoogleTokenValidator>();
+        services.AddScoped<IExternalTokenValidator, MicrosoftTokenValidator>();
 
         return services;
     }

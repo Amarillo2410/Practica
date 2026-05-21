@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
 namespace Api.Helpers.Errors;
 
 public class ApiResponse
@@ -16,15 +11,16 @@ public class ApiResponse
         Message = message ?? GetDefaultMessage(statusCode);
     }
 
-    private string GetDefaultMessage(int statusCode)
+    private static string GetDefaultMessage(int statusCode)
     {
         return statusCode switch
         {
-            400 => "Has realizado una petición incorrecta.",
+            400 => "Has realizado una peticion incorrecta.",
             401 => "Usuario no autorizado.",
             404 => "El recurso que has intentado solicitar no existe.",
-            405 => "Este método HTTP no está permitido en el servidor.",
-            500 => "Error en el servidor. Comunícate con el administrador XD.",
+            405 => "Este metodo HTTP no esta permitido en el servidor.",
+            409 => "Conflicto de datos en la solicitud.",
+            500 => "Error en el servidor. Contacta al administrador.",
             _ => throw new NotImplementedException()
         };
     }

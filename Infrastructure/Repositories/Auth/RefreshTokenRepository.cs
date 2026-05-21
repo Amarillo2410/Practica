@@ -1,12 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Application.Abstractions.Auth;
+using Domain.Entities.Auth;
+using Infrastructure.Context;
 
-namespace Infrastructure.Repositories.Auth
+namespace Infrastructure.Repositories.Auth;
+
+public sealed class RefreshTokenRepository(AppDbContext dbContext) : IRefreshTokenRepository
 {
-    public class RefreshTokenRepository
+    public Task AddAsync(RefreshToken refreshToken, CancellationToken ct = default)
     {
-        
+        dbContext.RefreshTokens.Add(refreshToken);
+        return Task.CompletedTask;
     }
 }
