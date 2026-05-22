@@ -258,3 +258,9 @@ Activar:
 ```
 app.UseCors(frontendCorsPolicy);
 ```
+
+
+
+## Conclusion
+
+Este taller permitió entender el flujo de autenticación en una aplicación moderna, reconstruyendo partes clave como la creación de usuarios, la generación de tokens JWT y la comunicación entre frontend y backend.
