@@ -7,8 +7,6 @@ public sealed class User : BaseEntity<Guid>
     public string Email { get; private set; } = string.Empty;
     public string? Phone { get; private set; }
     public string? PasswordHash { get; private set; }
-    public AuthProvider AuthProvider { get; private set; }
-    public string? ProviderId { get; private set; }
     public bool IsEmailVerified { get; private set; }
     public OnboardingStep CurrentOnboardingStep { get; private set; } = OnboardingStep.BasicProfile;
     public bool OnboardingComplete { get; private set; }
@@ -31,22 +29,6 @@ public sealed class User : BaseEntity<Guid>
     {
     }
 
-    public User(
-        string email,
-        AuthProvider authProvider,
-        string? providerId,
-        bool isEmailVerified,
-        OnboardingStep onboardingStep)
-    {
-        Id = Guid.NewGuid();
-        Email = NormalizeEmail(email);
-        AuthProvider = authProvider;
-        ProviderId = NormalizeOptional(providerId);
-        IsEmailVerified = isEmailVerified;
-        CurrentOnboardingStep = onboardingStep;
-        OnboardingComplete = onboardingStep == OnboardingStep.Completed;
-        Status = UserStatus.Active;
-    }
 
     public void SetOnboardingStep(OnboardingStep step)
     {

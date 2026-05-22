@@ -15,29 +15,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
 
     public string GenerateAccessToken(User user)
     {
-        var firstName = user.Profile?.FirstName ?? string.Empty;
-        var lastName = user.Profile?.LastName ?? string.Empty;
-
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new(JwtRegisteredClaimNames.GivenName, firstName),
-            new(JwtRegisteredClaimNames.FamilyName, lastName),
-            new("onboarding_step", user.CurrentOnboardingStep.ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: _options.Issuer,
-            audience: _options.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_options.DurationInMinutes),
-            signingCredentials: creds);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        
     }
 
     public string GenerateRefreshToken()

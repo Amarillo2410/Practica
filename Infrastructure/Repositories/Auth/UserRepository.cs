@@ -20,15 +20,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken ct = default)
     {
-        var normalizedEmail = email.Trim().ToLowerInvariant();
-
-        return dbContext.Users
-            .AsTracking()
-            .Include(x => x.Profile)
-            .Include(x => x.ProfessionalInfo)
-            .Include(x => x.JobPreferences)
-            .Include(x => x.Security)
-            .FirstOrDefaultAsync(x => x.Email == normalizedEmail, ct);
+        
     }
 
     public Task AddAsync(User user, CancellationToken ct = default)

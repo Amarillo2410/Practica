@@ -19,21 +19,12 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
-builder.Services.AddCors(options =>
-{
-    var allowedOrigins = builder.Configuration
-        .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>()
-        ?? [];
 
-    options.AddPolicy(frontendCorsPolicy, policy =>
-    {
-        policy
-            .WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
+//
+
+
+//
+
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
@@ -74,7 +65,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["HTTPS_PORT"]) ||
     app.UseHttpsRedirection();
 }
 app.UseStaticFiles();
-app.UseCors(frontendCorsPolicy);
+//app.UseCors(frontendCorsPolicy);
 app.UseAuthorization();
 app.MapControllers();
 

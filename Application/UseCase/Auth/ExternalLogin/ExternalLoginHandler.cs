@@ -221,28 +221,7 @@ public sealed class ExternalLoginHandler(
 
     private async Task<User> CreateExternalUserAsync(ExternalUserInfo externalUser, CancellationToken ct)
     {
-        var user = new User(
-            externalUser.Email,
-            externalUser.Provider,
-            externalUser.ProviderUserId,
-            isEmailVerified: false,
-            ResolveInitialOnboardingStep(externalUser));
 
-        var profile = new UserProfile(
-            user.Id,
-            externalUser.FirstName,
-            externalUser.LastName,
-            externalUser.ProfilePictureUrl);
-        profile.SetPublicProfileUrl(
-            await BuildUniquePublicProfileUrlAsync(profile.PublicProfileUrl, user.Id, ct));
-
-        user.SetProfile(profile);
-        user.SetProfessionalInfo(new ProfessionalInfo(user.Id));
-        user.SetJobPreferences(new JobPreferences(user.Id));
-        user.SetSecurity(new UserSecurity(user.Id));
-
-        await unitOfWork.Users.AddAsync(user, ct);
-        return user;
     }
 
     private static string BuildVerificationEmailBody(string? firstName, string code)
