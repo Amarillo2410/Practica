@@ -1,17 +1,24 @@
 using Application.Abstractions;
 using Application.Abstractions.Auth;
 using Application.Common.Exceptions;
+using Application.UseCase.Auth.EmailVerification;
 using Domain.Entities.Auth;
 using Domain.Enums;
 using MediatR;
+using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
 namespace Application.UseCase.Auth.ExternalLogin;
 
 public sealed class ExternalLoginHandler(
     IUnitOfWork unitOfWork,
     IEnumerable<IExternalTokenValidator> tokenValidators,
-    IJwtTokenService jwtTokenService) : IRequestHandler<ExternalLoginCommand, ExternalLoginResult>
+    IJwtTokenService jwtTokenService,
+    IEmailSender emailSender,
+    ILogger<ExternalLoginHandler> logger) : IRequestHandler<ExternalLoginCommand, ExternalLoginResult>
 {
+    private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
+
     public async Task<ExternalLoginResult> Handle(ExternalLoginCommand request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.IdToken))
@@ -27,11 +34,6 @@ public sealed class ExternalLoginHandler(
 
         var externalUser = await tokenValidator.ValidateAsync(request.IdToken, ct);
         ValidateExternalUser(externalUser);
-
-        if (!externalUser.EmailVerified)
-        {
-            throw new UnauthorizedException($"{externalUser.Provider} account email is not verified.");
-        }
 
         var existingOAuthAccount = await unitOfWork.OAuthAccounts.GetByProviderAndProviderUserIdAsync(
             externalUser.Provider,
@@ -52,63 +54,50 @@ public sealed class ExternalLoginHandler(
             if (userByEmail is null)
             {
                 isNewUser = true;
-                user = new User(
-                    externalUser.Email,
-                    externalUser.Provider,
-                    externalUser.ProviderUserId,
-                    externalUser.EmailVerified,
-                    ResolveInitialOnboardingStep(externalUser));
-
-                var newProfile = new UserProfile(
-                    user.Id,
-                    externalUser.FirstName,
-                    externalUser.LastName,
-                    externalUser.ProfilePictureUrl);
-                newProfile.SetPublicProfileUrl(
-                    await BuildUniquePublicProfileUrlAsync(newProfile.PublicProfileUrl, user.Id, ct));
-                user.SetProfile(newProfile);
-                user.SetProfessionalInfo(new ProfessionalInfo(user.Id));
-                user.SetJobPreferences(new JobPreferences(user.Id));
-                user.SetSecurity(new UserSecurity(user.Id));
-
-                await unitOfWork.Users.AddAsync(user, ct);
+                user = await CreateExternalUserAsync(externalUser, ct);
             }
             else
             {
-                user = userByEmail;
-
-                var existingProviderLogin = await unitOfWork.OAuthAccounts.GetByUserAndProviderAsync(
-                    user.Id,
-                    externalUser.Provider,
-                    ct);
-
-                if (existingProviderLogin is not null &&
-                    !string.Equals(existingProviderLogin.ProviderUserId, externalUser.ProviderUserId, StringComparison.Ordinal))
+                if (ShouldResetIncompleteUser(userByEmail))
                 {
-                    throw new ConflictException(
-                        $"This email is already linked to another {externalUser.Provider} account.");
+                    await unitOfWork.Users.DeleteAsync(userByEmail, ct);
+                    await unitOfWork.SaveChangesAsync(ct);
+
+                    isNewUser = true;
+                    user = await CreateExternalUserAsync(externalUser, ct);
                 }
-
-                if (!user.IsEmailVerified && externalUser.EmailVerified)
+                else
                 {
-                    user.ConfirmEmail();
-                }
+                    user = userByEmail;
 
-                if (user.Profile is null)
-                {
-                    var createdProfile = new UserProfile(
+                    var existingProviderLogin = await unitOfWork.OAuthAccounts.GetByUserAndProviderAsync(
                         user.Id,
-                        externalUser.FirstName,
-                        externalUser.LastName,
-                        externalUser.ProfilePictureUrl);
-                    createdProfile.SetPublicProfileUrl(
-                        await BuildUniquePublicProfileUrlAsync(createdProfile.PublicProfileUrl, user.Id, ct));
-                    user.SetProfile(createdProfile);
-                }
-                else if (string.IsNullOrWhiteSpace(user.Profile.AvatarUrl) &&
-                    !string.IsNullOrWhiteSpace(externalUser.ProfilePictureUrl))
-                {
-                    user.Profile.UpdateAvatar(externalUser.ProfilePictureUrl);
+                        externalUser.Provider,
+                        ct);
+
+                    if (existingProviderLogin is not null &&
+                        !string.Equals(existingProviderLogin.ProviderUserId, externalUser.ProviderUserId, StringComparison.Ordinal))
+                    {
+                        throw new ConflictException(
+                            $"This email is already linked to another {externalUser.Provider} account.");
+                    }
+
+                    if (user.Profile is null)
+                    {
+                        var createdProfile = new UserProfile(
+                            user.Id,
+                            externalUser.FirstName,
+                            externalUser.LastName,
+                            externalUser.ProfilePictureUrl);
+                        createdProfile.SetPublicProfileUrl(
+                            await BuildUniquePublicProfileUrlAsync(createdProfile.PublicProfileUrl, user.Id, ct));
+                        user.SetProfile(createdProfile);
+                    }
+                    else if (string.IsNullOrWhiteSpace(user.Profile.AvatarUrl) &&
+                        !string.IsNullOrWhiteSpace(externalUser.ProfilePictureUrl))
+                    {
+                        user.Profile.UpdateAvatar(externalUser.ProfilePictureUrl);
+                    }
                 }
             }
 
@@ -122,6 +111,15 @@ public sealed class ExternalLoginHandler(
             await unitOfWork.OAuthAccounts.AddAsync(oAuthAccount, ct);
         }
 
+        if (externalUser.EmailVerified && !user.IsEmailVerified)
+        {
+            user.ConfirmEmail();
+            if (user.CurrentOnboardingStep == OnboardingStep.PhoneVerification)
+            {
+                user.SetOnboardingStep(OnboardingStep.JobPreferences);
+            }
+        }
+
         var accessToken = jwtTokenService.GenerateAccessToken(user);
         var refreshTokenValue = jwtTokenService.GenerateRefreshToken();
         var refreshTokenExpiration = jwtTokenService.GetRefreshTokenExpiration();
@@ -130,6 +128,37 @@ public sealed class ExternalLoginHandler(
         await unitOfWork.RefreshTokens.AddAsync(refreshToken, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
+
+        var verificationCodeSent = true;
+        string? verificationMessage = null;
+
+        if (!user.IsEmailVerified)
+        {
+            var codeValue = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            var expiresAt = DateTime.UtcNow.Add(CodeLifetime);
+            await unitOfWork.EmailVerificationCodes.AddAsync(
+                new EmailVerificationCode(
+                    user.Id,
+                    EmailVerificationCodeHasher.Hash(codeValue),
+                    expiresAt),
+                ct);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            try
+            {
+                await emailSender.SendAsync(
+                    user.Email,
+                    "Tu codigo de verificacion de LinkedIn",
+                    BuildVerificationEmailBody(user.Profile?.FirstName, codeValue),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                verificationCodeSent = false;
+                verificationMessage = "No se pudo enviar el codigo de verificacion. Usa 'Reenviar codigo' para intentarlo de nuevo.";
+                logger.LogWarning(ex, "Verification code email could not be sent for user {UserId}", user.Id);
+            }
+        }
 
         return new ExternalLoginResult
         {
@@ -148,7 +177,9 @@ public sealed class ExternalLoginHandler(
             {
                 Completed = user.OnboardingComplete,
                 CurrentStep = user.CurrentOnboardingStep.ToString()
-            }
+            },
+            VerificationCodeSent = verificationCodeSent,
+            VerificationMessage = verificationMessage
         };
     }
 
@@ -169,6 +200,9 @@ public sealed class ExternalLoginHandler(
             throw new UnauthorizedException("External provider email is missing.");
         }
     }
+
+    private static bool ShouldResetIncompleteUser(User user)
+        => !user.IsEmailVerified && !user.OnboardingComplete;
 
     private static OnboardingStep ResolveInitialOnboardingStep(ExternalUserInfo token)
     {
@@ -195,5 +229,44 @@ public sealed class ExternalLoginHandler(
         }
 
         return candidate;
+    }
+
+    private async Task<User> CreateExternalUserAsync(ExternalUserInfo externalUser, CancellationToken ct)
+    {
+        var user = new User(
+            externalUser.Email,
+            externalUser.Provider,
+            externalUser.ProviderUserId,
+            isEmailVerified: externalUser.EmailVerified,
+            ResolveInitialOnboardingStep(externalUser));
+
+        var profile = new UserProfile(
+            user.Id,
+            externalUser.FirstName,
+            externalUser.LastName,
+            externalUser.ProfilePictureUrl);
+        profile.SetPublicProfileUrl(
+            await BuildUniquePublicProfileUrlAsync(profile.PublicProfileUrl, user.Id, ct));
+
+        user.SetProfile(profile);
+        user.SetProfessionalInfo(new ProfessionalInfo(user.Id));
+        user.SetJobPreferences(new JobPreferences(user.Id));
+        user.SetSecurity(new UserSecurity(user.Id));
+
+        await unitOfWork.Users.AddAsync(user, ct);
+        return user;
+    }
+
+    private static string BuildVerificationEmailBody(string? firstName, string code)
+    {
+        var safeName = string.IsNullOrWhiteSpace(firstName) ? "Hola" : firstName.Trim();
+        return $"""
+            <div style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2328">
+              <h2>{safeName}, verifica tu email</h2>
+              <p>Usa este codigo para completar tu registro:</p>
+              <p style="font-size:28px;font-weight:700;letter-spacing:6px">{code}</p>
+              <p>El codigo vence en 10 minutos.</p>
+            </div>
+            """;
     }
 }

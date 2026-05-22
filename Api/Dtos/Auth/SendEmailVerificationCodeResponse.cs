@@ -5,4 +5,6 @@ public sealed class SendEmailVerificationCodeResponse
     public string Email { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public bool AlreadyVerified { get; set; }
+    public bool CodeSent { get; set; } = true;
+    public string? Message { get; set; }
 }

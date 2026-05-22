@@ -7,6 +7,8 @@ public sealed class ExternalLoginResult
     public ExternalLoginUserResult User { get; init; } = null!;
     public ExternalLoginOnboardingResult Onboarding { get; init; } = null!;
     public bool IsNewUser { get; init; }
+    public bool VerificationCodeSent { get; init; } = true;
+    public string? VerificationMessage { get; init; }
 }
 
 public sealed class ExternalLoginUserResult

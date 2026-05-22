@@ -9,4 +9,5 @@ public interface IUserRepository
     Task<bool> ExistsPublicProfileUrlAsync(string publicProfileUrl, Guid? excludeUserId = null, CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);
     Task UpdateAsync(User user, CancellationToken ct = default);
+    Task DeleteAsync(User user, CancellationToken ct = default);
 }

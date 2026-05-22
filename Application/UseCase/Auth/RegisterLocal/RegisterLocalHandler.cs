@@ -1,18 +1,25 @@
 using Application.Abstractions;
 using Application.Abstractions.Auth;
 using Application.Common.Exceptions;
+using Application.UseCase.Auth.EmailVerification;
 using Application.UseCase.Auth.ExternalLogin;
 using Domain.Entities.Auth;
 using Domain.Enums;
 using MediatR;
+using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
 namespace Application.UseCase.Auth.RegisterLocal;
 
 public sealed class RegisterLocalHandler(
     IUnitOfWork unitOfWork,
     IPasswordHashService passwordHashService,
-    IJwtTokenService jwtTokenService) : IRequestHandler<RegisterLocalCommand, ExternalLoginResult>
+    IJwtTokenService jwtTokenService,
+    IEmailSender emailSender,
+    ILogger<RegisterLocalHandler> logger) : IRequestHandler<RegisterLocalCommand, ExternalLoginResult>
 {
+    private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
+
     public async Task<ExternalLoginResult> Handle(RegisterLocalCommand request, CancellationToken ct)
     {
         var existingUser = await unitOfWork.Users.GetByEmailAsync(request.Email, ct);
@@ -22,7 +29,7 @@ public sealed class RegisterLocalHandler(
         }
 
         var jobSearchStatus = ParseJobSearchStatus(request.JobSearchStatus);
-        var onboardingStep = ResolveOnboardingStep(request, jobSearchStatus);
+        var onboardingStep = ResolveOnboardingStep(request, jobSearchStatus, isEmailVerified: false);
 
         var user = new User(
             request.Email,
@@ -81,7 +88,34 @@ public sealed class RegisterLocalHandler(
         var refreshToken = new RefreshToken(user.Id, refreshTokenValue, refreshTokenExpiration);
         await unitOfWork.RefreshTokens.AddAsync(refreshToken, ct);
 
+        var verificationCodeValue = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var verificationExpiresAt = DateTime.UtcNow.Add(CodeLifetime);
+        await unitOfWork.EmailVerificationCodes.AddAsync(
+            new EmailVerificationCode(
+                user.Id,
+                EmailVerificationCodeHasher.Hash(verificationCodeValue),
+                verificationExpiresAt),
+            ct);
+
         await unitOfWork.SaveChangesAsync(ct);
+
+        var verificationCodeSent = true;
+        string? verificationMessage = null;
+
+        try
+        {
+            await emailSender.SendAsync(
+                user.Email,
+                "Tu codigo de verificacion de LinkedIn",
+                BuildVerificationEmailBody(user.Profile?.FirstName, verificationCodeValue),
+                ct);
+        }
+        catch (Exception ex)
+        {
+            verificationCodeSent = false;
+            verificationMessage = "No se pudo enviar el codigo de verificacion. Usa 'Reenviar codigo' para intentarlo de nuevo.";
+            logger.LogWarning(ex, "Verification code email could not be sent for user {UserId}", user.Id);
+        }
 
         return new ExternalLoginResult
         {
@@ -100,7 +134,9 @@ public sealed class RegisterLocalHandler(
             {
                 Completed = user.OnboardingComplete,
                 CurrentStep = user.CurrentOnboardingStep.ToString()
-            }
+            },
+            VerificationCodeSent = verificationCodeSent,
+            VerificationMessage = verificationMessage
         };
     }
 
@@ -147,7 +183,8 @@ public sealed class RegisterLocalHandler(
 
     private static OnboardingStep ResolveOnboardingStep(
         RegisterLocalCommand request,
-        JobSearchStatus jobSearchStatus)
+        JobSearchStatus jobSearchStatus,
+        bool isEmailVerified)
     {
         if (string.IsNullOrWhiteSpace(request.Location))
         {
@@ -171,6 +208,24 @@ public sealed class RegisterLocalHandler(
             return OnboardingStep.JobPreferences;
         }
 
+        if (!isEmailVerified)
+        {
+            return OnboardingStep.PhoneVerification;
+        }
+
         return OnboardingStep.Completed;
+    }
+
+    private static string BuildVerificationEmailBody(string? firstName, string code)
+    {
+        var safeName = string.IsNullOrWhiteSpace(firstName) ? "Hola" : firstName.Trim();
+        return $"""
+            <div style="font-family:Arial,sans-serif;line-height:1.5;color:#1f2328">
+              <h2>{safeName}, verifica tu email</h2>
+              <p>Usa este codigo para completar tu registro:</p>
+              <p style="font-size:28px;font-weight:700;letter-spacing:6px">{code}</p>
+              <p>El codigo vence en 10 minutos.</p>
+            </div>
+            """;
     }
 }

@@ -5,12 +5,14 @@ using Application.Abstractions.Auth;
 using Application.Common.Exceptions;
 using Domain.Entities.Auth;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Application.UseCase.Auth.EmailVerification;
 
 public sealed class SendEmailVerificationCodeHandler(
     IUnitOfWork unitOfWork,
-    IEmailSender emailSender) : IRequestHandler<SendEmailVerificationCodeCommand, SendEmailVerificationCodeResult>
+    IEmailSender emailSender,
+    ILogger<SendEmailVerificationCodeHandler> logger) : IRequestHandler<SendEmailVerificationCodeCommand, SendEmailVerificationCodeResult>
 {
     private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
 
@@ -42,17 +44,30 @@ public sealed class SendEmailVerificationCodeHandler(
             ct);
         await unitOfWork.SaveChangesAsync(ct);
 
-        await emailSender.SendAsync(
-            user.Email,
-            "Tu codigo de verificacion de LinkedIn",
-            BuildEmailBody(user.Profile?.FirstName, code),
-            ct);
+        var codeSent = true;
+        string? message = null;
+        try
+        {
+            await emailSender.SendAsync(
+                user.Email,
+                "Tu codigo de verificacion de LinkedIn",
+                BuildEmailBody(user.Profile?.FirstName, code),
+                ct);
+        }
+        catch (Exception ex)
+        {
+            codeSent = false;
+            message = "No se pudo enviar el codigo de verificacion. Intenta nuevamente en unos segundos.";
+            logger.LogWarning(ex, "Verification code email could not be sent for user {UserId}", user.Id);
+        }
 
         return new SendEmailVerificationCodeResult
         {
             Email = user.Email,
             ExpiresAt = expiresAt,
-            AlreadyVerified = false
+            AlreadyVerified = false,
+            CodeSent = codeSent,
+            Message = message
         };
     }
 

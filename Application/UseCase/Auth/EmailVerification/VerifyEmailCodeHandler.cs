@@ -38,6 +38,12 @@ public sealed class VerifyEmailCodeHandler(
 
         verificationCode.Consume();
         user.ConfirmEmail();
+
+        if (user.CurrentOnboardingStep == Domain.Enums.OnboardingStep.PhoneVerification)
+        {
+            user.SetOnboardingStep(Domain.Enums.OnboardingStep.Completed);
+        }
+
         await unitOfWork.SaveChangesAsync(ct);
 
         return BuildResult(user);

@@ -50,4 +50,10 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         dbContext.Users.Update(user);
         return Task.CompletedTask;
     }
+
+    public Task DeleteAsync(User user, CancellationToken ct = default)
+    {
+        dbContext.Users.Remove(user);
+        return Task.CompletedTask;
+    }
 }

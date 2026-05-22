@@ -67,7 +67,7 @@ public sealed class UpdateLocalProfileHandler(
         user.SetProfessionalInfo(professionalInfo);
         user.SetJobPreferences(jobPreferences);
 
-        user.SetOnboardingStep(ResolveOnboardingStep(request, jobSearchStatus));
+        user.SetOnboardingStep(ResolveOnboardingStep(request, jobSearchStatus, user.IsEmailVerified));
 
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -111,7 +111,8 @@ public sealed class UpdateLocalProfileHandler(
 
     private static OnboardingStep ResolveOnboardingStep(
         UpdateLocalProfileCommand request,
-        JobSearchStatus jobSearchStatus)
+        JobSearchStatus jobSearchStatus,
+        bool isEmailVerified)
     {
         if (string.IsNullOrWhiteSpace(request.Location))
         {
@@ -133,6 +134,11 @@ public sealed class UpdateLocalProfileHandler(
         if (!hasJobPreferences)
         {
             return OnboardingStep.JobPreferences;
+        }
+
+        if (!isEmailVerified)
+        {
+            return OnboardingStep.PhoneVerification;
         }
 
         return OnboardingStep.Completed;

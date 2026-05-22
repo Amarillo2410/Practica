@@ -7,4 +7,6 @@ public sealed class ExternalLoginResponse
     public AuthUserResponse User { get; set; } = new();
     public OnboardingStatusResponse Onboarding { get; set; } = new();
     public bool IsNewUser { get; set; }
+    public bool VerificationCodeSent { get; set; } = true;
+    public string? VerificationMessage { get; set; }
 }

@@ -74,13 +74,28 @@ public static class DependencyInjection
             options.FromName = configuration["Email:Smtp:FromName"] ?? "LinkedIn";
         });
 
+        services.Configure<EmailSenderSettings>(options =>
+        {
+            options.Provider = configuration["Email:Provider"] ?? "Smtp";
+        });
+
+        services.Configure<ResendEmailSettings>(options =>
+        {
+            options.ApiKey = configuration["Email:Resend:ApiKey"] ?? string.Empty;
+            options.BaseUrl = configuration["Email:Resend:BaseUrl"] ?? "https://api.resend.com";
+            options.FromEmail = configuration["Email:Resend:FromEmail"] ?? string.Empty;
+            options.FromName = configuration["Email:Resend:FromName"] ?? "LinkedIn";
+        });
+
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerificationCodeRepository, EmailVerificationCodeRepository>();
         services.AddScoped<IPasswordHashService, Pbkdf2PasswordHashService>();
-        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<SmtpEmailSender>();
+        services.AddScoped<ResendEmailSender>();
+        services.AddScoped<IEmailSender, ConfigurableEmailSender>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IExternalTokenValidator, GoogleTokenValidator>();
         services.AddScoped<IExternalTokenValidator, MicrosoftTokenValidator>();

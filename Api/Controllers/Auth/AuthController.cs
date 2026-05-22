@@ -109,7 +109,9 @@ public sealed class AuthController(
         {
             Email = result.Email,
             ExpiresAt = result.ExpiresAt,
-            AlreadyVerified = result.AlreadyVerified
+            AlreadyVerified = result.AlreadyVerified,
+            CodeSent = result.CodeSent,
+            Message = result.Message
         });
     }
 
@@ -189,6 +191,32 @@ public sealed class AuthController(
         await unitOfWork.SaveChangesAsync(ct);
 
         return Ok(new ProfilePhotoUploadResponse { ProfilePictureUrl = BuildAbsoluteMediaUrl(profilePicturePath) });
+    }
+
+    [HttpDelete("register/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CancelIncompleteRegistration(CancellationToken ct)
+    {
+        var authenticatedUserId = GetAuthenticatedUserId();
+        var user = await unitOfWork.Users.GetByIdAsync(authenticatedUserId, ct);
+
+        if (user is null)
+        {
+            return NoContent();
+        }
+
+        if (user.OnboardingComplete)
+        {
+            throw new BadRequestException("Completed accounts cannot be cancelled from onboarding.");
+        }
+
+        await unitOfWork.Users.DeleteAsync(user, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+
+        return NoContent();
     }
 
     [HttpPost("external-login/google")]
@@ -304,6 +332,8 @@ public sealed class AuthController(
             AccessToken = result.AccessToken,
             RefreshToken = result.RefreshToken,
             IsNewUser = result.IsNewUser,
+            VerificationCodeSent = result.VerificationCodeSent,
+            VerificationMessage = result.VerificationMessage,
             User = new AuthUserResponse
             {
                 Id = result.User.Id,
