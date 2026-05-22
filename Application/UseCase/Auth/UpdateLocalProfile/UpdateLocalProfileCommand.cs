@@ -19,4 +19,5 @@ public sealed record UpdateLocalProfileCommand(
     IReadOnlyCollection<string>? PreferredLocations,
     bool RemoteInterested,
     bool JobAlertsEnabled,
-    bool RecruiterVisibility) : IRequest<UpdateLocalProfileResult>;
+    bool RecruiterVisibility,
+    bool CompleteOnboarding = false) : IRequest<UpdateLocalProfileResult>;

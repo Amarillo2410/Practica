@@ -57,7 +57,7 @@ public sealed class SendEmailVerificationCodeHandler(
         catch (Exception ex)
         {
             codeSent = false;
-            message = "No se pudo enviar el codigo de verificacion. Intenta nuevamente en unos segundos.";
+            message = "No se pudo enviar el codigo de verificacion. Configura Email:Smtp o Email:Resend e intenta de nuevo.";
             logger.LogWarning(ex, "Verification code email could not be sent for user {UserId}", user.Id);
         }
 
@@ -67,7 +67,8 @@ public sealed class SendEmailVerificationCodeHandler(
             ExpiresAt = expiresAt,
             AlreadyVerified = false,
             CodeSent = codeSent,
-            Message = message
+            Message = message,
+            PreviewCode = code
         };
     }
 

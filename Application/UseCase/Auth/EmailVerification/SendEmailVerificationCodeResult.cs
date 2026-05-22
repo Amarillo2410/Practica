@@ -7,4 +7,5 @@ public sealed class SendEmailVerificationCodeResult
     public bool AlreadyVerified { get; init; }
     public bool CodeSent { get; init; } = true;
     public string? Message { get; init; }
+    public string? PreviewCode { get; init; }
 }

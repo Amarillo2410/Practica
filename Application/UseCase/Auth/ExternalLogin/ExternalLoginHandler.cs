@@ -111,15 +111,6 @@ public sealed class ExternalLoginHandler(
             await unitOfWork.OAuthAccounts.AddAsync(oAuthAccount, ct);
         }
 
-        if (externalUser.EmailVerified && !user.IsEmailVerified)
-        {
-            user.ConfirmEmail();
-            if (user.CurrentOnboardingStep == OnboardingStep.PhoneVerification)
-            {
-                user.SetOnboardingStep(OnboardingStep.JobPreferences);
-            }
-        }
-
         var accessToken = jwtTokenService.GenerateAccessToken(user);
         var refreshTokenValue = jwtTokenService.GenerateRefreshToken();
         var refreshTokenExpiration = jwtTokenService.GetRefreshTokenExpiration();
@@ -205,10 +196,7 @@ public sealed class ExternalLoginHandler(
         => !user.IsEmailVerified && !user.OnboardingComplete;
 
     private static OnboardingStep ResolveInitialOnboardingStep(ExternalUserInfo token)
-    {
-        var hasNames = !string.IsNullOrWhiteSpace(token.FirstName) && !string.IsNullOrWhiteSpace(token.LastName);
-        return hasNames ? OnboardingStep.Location : OnboardingStep.BasicProfile;
-    }
+        => OnboardingStep.BasicProfile;
 
     private async Task<string> BuildUniquePublicProfileUrlAsync(
         string? baseSlug,
@@ -237,7 +225,7 @@ public sealed class ExternalLoginHandler(
             externalUser.Email,
             externalUser.Provider,
             externalUser.ProviderUserId,
-            isEmailVerified: externalUser.EmailVerified,
+            isEmailVerified: false,
             ResolveInitialOnboardingStep(externalUser));
 
         var profile = new UserProfile(

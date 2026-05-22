@@ -19,4 +19,5 @@ public sealed class LocalProfileUpdateRequest
     public bool RemoteInterested { get; set; }
     public bool JobAlertsEnabled { get; set; } = true;
     public bool RecruiterVisibility { get; set; } = true;
+    public bool CompleteOnboarding { get; set; }
 }

@@ -7,15 +7,18 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
-var postgresConnectionString = builder.Configuration.GetConnectionString("Postgres")
-    ?? throw new InvalidOperationException("Connection string 'Postgres' is required.");
+var postgresConnectionString = ResolvePostgresConnectionString(builder.Configuration);
 const string frontendCorsPolicy = "FrontendCorsPolicy";
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddFilter("LuckyPennySoftware.MediatR.License", LogLevel.None);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 builder.Services.AddCors(options =>
 {
     var allowedOrigins = builder.Configuration
@@ -93,6 +96,27 @@ catch (Exception ex)
 }
 
 app.Run();
+
+static string ResolvePostgresConnectionString(IConfiguration configuration)
+{
+    var connectionString = configuration.GetConnectionString("Postgres")
+        ?? throw new InvalidOperationException("Connection string 'Postgres' is required.");
+
+    var passwordOverride = configuration["POSTGRES_PASSWORD"]
+        ?? Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+
+    if (string.IsNullOrWhiteSpace(passwordOverride))
+    {
+        return connectionString;
+    }
+
+    var builder = new NpgsqlConnectionStringBuilder(connectionString)
+    {
+        Password = passwordOverride
+    };
+
+    return builder.ConnectionString;
+}
 
 static async Task EnsureDatabaseExistsAsync(string connectionString, CancellationToken ct = default)
 {

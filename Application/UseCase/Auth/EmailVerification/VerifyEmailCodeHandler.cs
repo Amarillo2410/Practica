@@ -41,7 +41,7 @@ public sealed class VerifyEmailCodeHandler(
 
         if (user.CurrentOnboardingStep == Domain.Enums.OnboardingStep.PhoneVerification)
         {
-            user.SetOnboardingStep(Domain.Enums.OnboardingStep.Completed);
+            user.SetOnboardingStep(Domain.Enums.OnboardingStep.JobPreferences);
         }
 
         await unitOfWork.SaveChangesAsync(ct);

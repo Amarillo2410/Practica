@@ -200,7 +200,13 @@ public sealed class RegisterLocalHandler(
             return OnboardingStep.Experience;
         }
 
-        var hasJobPreferences = jobSearchStatus == JobSearchStatus.NotInterested ||
+        if (!isEmailVerified)
+        {
+            return OnboardingStep.PhoneVerification;
+        }
+
+        var hasJobPreferences =
+            (!string.IsNullOrWhiteSpace(request.JobSearchStatus) && jobSearchStatus == JobSearchStatus.NotInterested) ||
             (request.PreferredTitles?.Any() == true && request.PreferredLocations?.Any() == true);
 
         if (!hasJobPreferences)
@@ -208,12 +214,7 @@ public sealed class RegisterLocalHandler(
             return OnboardingStep.JobPreferences;
         }
 
-        if (!isEmailVerified)
-        {
-            return OnboardingStep.PhoneVerification;
-        }
-
-        return OnboardingStep.Completed;
+        return OnboardingStep.JobPreferences;
     }
 
     private static string BuildVerificationEmailBody(string? firstName, string code)

@@ -93,8 +93,10 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerificationCodeRepository, EmailVerificationCodeRepository>();
         services.AddScoped<IPasswordHashService, Pbkdf2PasswordHashService>();
+        services.AddSingleton<EmailProviderResolver>();
         services.AddScoped<SmtpEmailSender>();
         services.AddScoped<ResendEmailSender>();
+        services.AddScoped<LoggingEmailSender>();
         services.AddScoped<IEmailSender, ConfigurableEmailSender>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IExternalTokenValidator, GoogleTokenValidator>();

@@ -55,19 +55,22 @@ public sealed class UpdateLocalProfileHandler(
             request.JobTitle);
 
         var jobSearchStatus = ParseJobSearchStatus(request.JobSearchStatus);
-        jobPreferences.UpdatePreferences(
-            jobSearchStatus,
-            request.PreferredTitles,
-            request.PreferredLocations,
-            request.RemoteInterested,
-            request.JobAlertsEnabled,
-            request.RecruiterVisibility);
+        if (HasJobPreferencePayload(request))
+        {
+            jobPreferences.UpdatePreferences(
+                jobSearchStatus,
+                request.PreferredTitles,
+                request.PreferredLocations,
+                request.RemoteInterested,
+                request.JobAlertsEnabled,
+                request.RecruiterVisibility);
+        }
 
         user.SetProfile(profile);
         user.SetProfessionalInfo(professionalInfo);
         user.SetJobPreferences(jobPreferences);
 
-        user.SetOnboardingStep(ResolveOnboardingStep(request, jobSearchStatus, user.IsEmailVerified));
+        user.SetOnboardingStep(ResolveOnboardingStep(request, jobPreferences, user.IsEmailVerified));
 
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -109,9 +112,32 @@ public sealed class UpdateLocalProfileHandler(
         return JobSearchStatus.NotInterested;
     }
 
+    private static bool HasJobPreferencePayload(UpdateLocalProfileCommand request)
+        => !string.IsNullOrWhiteSpace(request.JobSearchStatus) ||
+           request.PreferredTitles?.Any() == true ||
+           request.PreferredLocations?.Any() == true;
+
+    private static bool HasConfiguredJobPreferences(
+        UpdateLocalProfileCommand request,
+        JobPreferences jobPreferences)
+    {
+        if (!string.IsNullOrWhiteSpace(request.JobSearchStatus))
+        {
+            var status = ParseJobSearchStatus(request.JobSearchStatus);
+            if (status == JobSearchStatus.NotInterested)
+            {
+                return true;
+            }
+
+            return request.PreferredTitles?.Any() == true && request.PreferredLocations?.Any() == true;
+        }
+
+        return jobPreferences.PreferredTitles.Length > 0 && jobPreferences.PreferredLocations.Length > 0;
+    }
+
     private static OnboardingStep ResolveOnboardingStep(
         UpdateLocalProfileCommand request,
-        JobSearchStatus jobSearchStatus,
+        JobPreferences jobPreferences,
         bool isEmailVerified)
     {
         if (string.IsNullOrWhiteSpace(request.Location))
@@ -128,19 +154,21 @@ public sealed class UpdateLocalProfileHandler(
             return OnboardingStep.Experience;
         }
 
-        var hasJobPreferences = jobSearchStatus == JobSearchStatus.NotInterested ||
-            (request.PreferredTitles?.Any() == true && request.PreferredLocations?.Any() == true);
-
-        if (!hasJobPreferences)
-        {
-            return OnboardingStep.JobPreferences;
-        }
-
         if (!isEmailVerified)
         {
             return OnboardingStep.PhoneVerification;
         }
 
-        return OnboardingStep.Completed;
+        if (!HasConfiguredJobPreferences(request, jobPreferences))
+        {
+            return OnboardingStep.JobPreferences;
+        }
+
+        if (request.CompleteOnboarding)
+        {
+            return OnboardingStep.Completed;
+        }
+
+        return OnboardingStep.ProfilePhoto;
     }
 }

@@ -5,6 +5,7 @@ using Application.Abstractions;
 using Application.Common.Exceptions;
 using Application.UseCase.Auth.EmailVerification;
 using Application.UseCase.Auth.ExternalLogin;
+using Application.UseCase.Auth.LocalLogin;
 using Application.UseCase.Auth.RegisterLocal;
 using Application.UseCase.Auth.UpdateLocalProfile;
 using Domain.Entities.Auth;
@@ -85,7 +86,8 @@ public sealed class AuthController(
             request.PreferredLocations,
             request.RemoteInterested,
             request.JobAlertsEnabled,
-            request.RecruiterVisibility);
+            request.RecruiterVisibility,
+            request.CompleteOnboarding);
 
         var result = await sender.Send(command, ct);
         return Ok(new OnboardingStatusResponse
@@ -111,7 +113,8 @@ public sealed class AuthController(
             ExpiresAt = result.ExpiresAt,
             AlreadyVerified = result.AlreadyVerified,
             CodeSent = result.CodeSent,
-            Message = result.Message
+            Message = result.Message,
+            PreviewCode = environment.IsDevelopment() ? result.PreviewCode : null
         });
     }
 
@@ -217,6 +220,21 @@ public sealed class AuthController(
         await unitOfWork.SaveChangesAsync(ct);
 
         return NoContent();
+    }
+
+    [HttpPost("login/local")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(ExternalLoginResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ExternalLoginResponse>> LocalLogin(
+        [FromBody] LocalLoginRequest request,
+        CancellationToken ct)
+    {
+        var command = new LocalLoginCommand(request.Email, request.Password);
+        var result = await sender.Send(command, ct);
+        return Ok(ToExternalLoginResponse(result));
     }
 
     [HttpPost("external-login/google")]
